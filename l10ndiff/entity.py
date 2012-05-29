@@ -35,7 +35,8 @@ class EntityDiff(NodeDiff):
     def __init__(self, id=None):
         self.id = id
 
-def diff_values(*args):
+def diff_values(*args, **kwargs):
+    values = kwargs.get('values', True)
     if isinstance(args[0], basestring):
         return args
     if isinstance(args[0], list):
@@ -52,19 +53,31 @@ def diff_values(*args):
         keys = intersect(*[i.keys() for i in args])
         fdiff = {}
         for key in keys:
-            fdiff[key] = diff_values(*[i[key] for i in args])
+            fdiff[key] = diff_values(*[i[key] for i in args], values=values)
+        for i,arg in enumerate(args):
+            for key in arg.keys():
+                if key not in keys:
+                    kdiff = fdiff.get(key, [])
+                    if not kdiff:
+                        kdiff = [None]*len(args)
+                    kdiff[i] = arg
+                    fdiff[key] = kdiff
         return fdiff
     if hasattr(args[0], '_fields'):
-        return diff_nodes(*args)
+        return diff_nodes(*args, values=values)
     return args
 
-def diff_nodes(*args):
+def diff_nodes(*args, **kwargs):
+    values = kwargs.get('values', True)
     fields = []
     for node in args:
-        fields.append(node._fields)
+        if node is not None:
+            fields.append(node._fields)
     fields = intersect(*fields)
     ndiff = NodeDiff()
     for field in fields:
+        if not values and field in ('value', 'content'):
+            continue
         fdiff = []
         for node in args:
             if not hasattr(node, field):
@@ -74,27 +87,20 @@ def diff_nodes(*args):
         if equalseq(fdiff):
             pass
         else:
-            print('---')
-            print('nequal')
-            print(field)
-            print(hasattr(fdiff[0], '_fields'))
-            print(type(fdiff[0]))
-            print('====')
             if len(set(map(type, fdiff))) == 1:
-                print('equal types')
                 if hasattr(fdiff[0], '_fields'):
-                    ndiff[field] = diff_nodes(*fdiff)
+                    ndiff[field] = diff_nodes(*fdiff, values=values)
                 else:
-                    ndiff[field] = diff_values(*fdiff)
+                    ndiff[field] = diff_values(*fdiff, values=values)
             else:
-                print('different types')
-                print(fdiff)
                 ndiff[field] = fdiff
     return ndiff
 
-def entities(*args):
+def entities(*args, **kwargs):
+    values = kwargs.get('values', True)
     if len(args) < 2:
         raise TypeError('diff() must have at least two arguments.')
-    ediff = diff_nodes(*args)
+    ediff = diff_nodes(*args, values=values)
     return ediff
+
 
