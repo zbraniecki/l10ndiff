@@ -5,15 +5,17 @@ def intersect(*args):
     r = set(args[0])
     for arg in args[1:]:
         r &= set(arg)
-    return list(r)
+    return [x for x in args[0] if x in r]
 
 def diff_lists(*lists, **kval):
     values = kval.get('values', True)
     keys = intersect(*[l.keys() for l in lists])
     ldiff = EntityListDiff()
     for key in keys:
-        kdiff = {'elem': entities(*[l[key] for l in lists], values=values), 'flags': set(('present',))}
-        ldiff[key] = kdiff
+        ediff = entities(*[l[key] for l in lists], values=values)
+        if ediff:
+            kdiff = {'elem': ediff, 'flags': set(('present',))}
+            ldiff[key] = kdiff
     for i,l in enumerate(lists):
         for k in l.keys():
             if k not in keys:
