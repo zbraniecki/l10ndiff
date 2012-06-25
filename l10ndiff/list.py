@@ -7,6 +7,15 @@ def intersect(*args):
         r &= set(arg)
     return [x for x in args[0] if x in r]
 
+def getpos(keylist, key):
+    ret = {'before': None, 'after': None}
+    pos = keylist.index(key)
+    if pos > 0:
+        ret['after'] = keylist[pos-1]
+    if pos < len(keylist)-1:
+        ret['before'] = keylist[pos+1]
+    return ret
+
 def diff_lists(*lists, **kval):
     values = kval.get('values', True)
     keys = intersect(*[l.keys() for l in lists])
@@ -14,16 +23,23 @@ def diff_lists(*lists, **kval):
     for key in keys:
         ediff = entities(*[l[key] for l in lists], values=values)
         if ediff:
-            kdiff = {'elem': ediff, 'flags': set(('present',))}
+            kdiff = {'elem': ediff,
+                     'flags': set(('present',)),
+                     'pos': None}
             ldiff[key] = kdiff
     for i,l in enumerate(lists):
         for k in l.keys():
             if k not in keys:
                 kdiff = ldiff.get(k, [])
                 if not kdiff:
-                    kdiff = {'elem': [None]*len(lists), 'flags': set()}
-                kdiff['elem'][i] = l[k]
+                    kdiff = {'elem': [None]*len(lists),
+                             'flags': set(),
+                             'pos': None}
+                for i2, l2 in enumerate(lists):
+                    if k in l2:
+                        kdiff['elem'][i2] = l2[k]
                 kdiff['flags'].add('added')
+                kdiff['pos'] = getpos(list(l.keys()), k)
                 ldiff[k] = kdiff
     return ldiff
 
